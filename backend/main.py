@@ -85,3 +85,27 @@ def search(query: str = Query(..., min_length=2)):
         "best": best,
         "results": mock_results,
     }
+import urllib.parse
+
+def shoprite_links(query: str) -> dict:
+    q = urllib.parse.quote_plus(query)
+    return {
+        "search": f"https://www.shoprite.com/results?q={q}",
+        "circular": "https://www.shoprite.com/circulars",
+        "coupons": "https://www.shoprite.com/digital-coupon",
+        "promotions": "https://www.shoprite.com/Promotions",
+    }
+sr = shoprite_links(query)
+
+shoprite_result = {
+    "store": "ShopRite",
+    "product": f'ShopRite results for "{query}"',
+    "price": None,
+    "unit": None,
+    "delivery": "Pickup (store-specific)",
+    "coupon": "See ShopRite digital coupons / circular",
+    "links": sr,
+    "note": "ShopRite pricing varies by store; use links for current deals."
+}
+
+results.append(shoprite_result)
