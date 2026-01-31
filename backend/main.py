@@ -1,91 +1,17 @@
-from fastapi import FastAPI
-
-app = FastAPI()
-
-@app.get("/")
-def root():
-    return {
-        "message": "Smart Saver backend is running 🚀"
-    }
-
-@app.get("/test")
-def test():
-    return {
-        "status": "ok",
-        "store": "Walmart",
-        "example_product": "Lactaid Whole Milk",
-        "price": 4.99,
-        "delivery": "Free"
-    }
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+import urllib.parse
 
-app = FastAPI()
+app = FastAPI(title="Smart Saver API")
 
-# Allow your Lovable site (later) to call this API
+# Allow browser apps (Lovable) to call this API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # later we’ll restrict this
+    allow_origins=["*"],  # later restrict to your Lovable domain
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.get("/")
-def root():
-    return {"message": "Smart Saver backend is running 🚀"}
-
-@app.get("/test")
-def test():
-    return {
-        "status": "ok",
-        "store": "Walmart",
-        "example_product": "Lactaid Whole Milk",
-        "price": 4.99,
-        "delivery": "Free",
-    }
-
-@app.get("/search")
-def search(query: str = Query(..., min_length=2)):
-    """
-    MVP v0: Mock results (fake data).
-    Next: replace mock with real store prices.
-    """
-    mock_results = [
-        {
-            "store": "Walmart",
-            "product": "Lactaid Whole Milk, 64 fl oz",
-            "price": 4.99,
-            "unit": "64 fl oz",
-            "delivery": "Free",
-            "coupon": None,
-        },
-        {
-            "store": "Amazon",
-            "product": "Lactaid Whole Milk, 64 fl oz",
-            "price": 5.49,
-            "unit": "64 fl oz",
-            "delivery": "Free",
-            "coupon": "Save $0.50 (mock)",
-        },
-        {
-            "store": "ShopRite",
-            "product": "Lactaid Whole Milk, 64 fl oz",
-            "price": 4.79,
-            "unit": "64 fl oz",
-            "delivery": "Pickup",
-            "coupon": "Digital coupon (mock)",
-        },
-    ]
-
-    best = min(mock_results, key=lambda x: x["price"])
-
-    return {
-        "query": query,
-        "best": best,
-        "results": mock_results,
-    }
-import urllib.parse
 
 def shoprite_links(query: str) -> dict:
     q = urllib.parse.quote_plus(query)
@@ -95,17 +21,53 @@ def shoprite_links(query: str) -> dict:
         "coupons": "https://www.shoprite.com/digital-coupon",
         "promotions": "https://www.shoprite.com/Promotions",
     }
-sr = shoprite_links(query)
 
-shoprite_result = {
-    "store": "ShopRite",
-    "product": f'ShopRite results for "{query}"',
-    "price": None,
-    "unit": None,
-    "delivery": "Pickup (store-specific)",
-    "coupon": "See ShopRite digital coupons / circular",
-    "links": sr,
-    "note": "ShopRite pricing varies by store; use links for current deals."
-}
+@app.get("/")
+def root():
+    return {"message": "Smart Saver backend is running 🚀"}
 
-results.append(shoprite_result)
+@app.get("/test")
+def test():
+    return {"status": "ok"}
+
+@app.get("/search")
+def search(query: str = Query(..., min_length=2)):
+    """
+    MVP v0:
+    - Walmart/Amazon: mock prices (for now)
+    - ShopRite: safe link-outs to circular/coupons/search
+    """
+    results = [
+        {
+            "store": "Walmart",
+            "product": f'{query} (mock)',
+            "price": 4.99,
+            "unit": None,
+            "delivery": "Free",
+            "coupon": None,
+        },
+        {
+            "store": "Amazon",
+            "product": f'{query} (mock)',
+            "price": 5.49,
+            "unit": None,
+            "delivery": "Free",
+            "coupon": "Save $0.50 (mock)",
+        },
+        {
+            "store": "ShopRite",
+            "product": f'ShopRite results for "{query}"',
+            "price": None,
+            "unit": None,
+            "delivery": "In-store / pickup (store-specific)",
+            "coupon": "Check digital coupons & circular",
+            "links": shoprite_links(query),
+            "note": "ShopRite pricing varies by location. Use links for current deals.",
+        },
+    ]
+
+    # Best deal = lowest numeric price only (ignores ShopRite price=None)
+    priced = [r for r in results if isinstance(r.get("price"), (int, float))]
+    best = min(priced, key=lambda r: r["price"]) if priced else None
+
+    return {"query": query, "best": best, "results": results}
